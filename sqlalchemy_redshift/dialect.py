@@ -5,7 +5,7 @@ import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy import Column, exc, inspect
 from sqlalchemy.dialects.postgresql.base import (
-    PGCompiler, PGDDLCompiler, PGIdentifierPreparer
+    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
@@ -13,7 +13,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
     BinaryExpression, BooleanClauseList, Delete
 )
-from sqlalchemy.types import VARCHAR, NullType
+from sqlalchemy.types import VARCHAR, NullType, SMALLINT, INTEGER, BIGINT, DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP
+from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
 from .commands import (
     CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
@@ -135,6 +136,32 @@ RESERVED_WORDS = set([
 ])
 
 
+class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
+
+    __visit_name__ = 'TIMESTAMPTZ'
+
+    def __init__(self):
+        super(TIMESTAMPTZ, self).__init__(timezone=True)
+
+
+# "Each dialect provides the full set of typenames supported by that backend with its __all__ collection
+# https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+__all__ = (
+    'SMALLINT',
+    'INTEGER',
+    'BIGINT',
+    'DECIMAL',
+    'REAL',
+    'BOOLEAN',
+    'CHAR',
+    'DATE',
+    'TIMESTAMP',
+    'VARCHAR',
+    'DOUBLE_PRECISION',
+    'TIMESTAMPTZ'
+)
+
+
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
     Structured tuple of table/view name and schema name.
@@ -248,6 +275,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     )
     <BLANKLINE>
     <BLANKLINE>
+
+    The TIMESTAMPTZ column type is also supported in the DDL.
 
     For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
     as keyword arguments is not supported on the column level.
@@ -369,6 +398,12 @@ class RedshiftDDLCompiler(PGDDLCompiler):
         return text
 
 
+class RedshiftTypeCompiler(PGTypeCompiler):
+
+    def visit_TIMESTAMPTZ(self, type_, **kw):
+        return "TIMESTAMPTZ"
+
+
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
@@ -388,6 +423,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
+    type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {
             "using": False,
