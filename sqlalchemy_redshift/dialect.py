@@ -13,7 +13,9 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
     BinaryExpression, BooleanClauseList, Delete
 )
-from sqlalchemy.types import VARCHAR, NullType, SMALLINT, INTEGER, BIGINT, DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP
+from sqlalchemy.types import (
+    VARCHAR, NullType, SMALLINT, INTEGER, BIGINT,
+    DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP)
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
 from .commands import (
@@ -33,10 +35,26 @@ else:
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
 
-__all__ = [
+# "Each dialect provides the full set of typenames supported by that backend
+# with its __all__ collection
+# https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+__all__ = (
+    'SMALLINT',
+    'INTEGER',
+    'BIGINT',
+    'DECIMAL',
+    'REAL',
+    'BOOLEAN',
+    'CHAR',
+    'DATE',
+    'TIMESTAMP',
+    'VARCHAR',
+    'DOUBLE_PRECISION',
+    'TIMESTAMPTZ',
+
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
-]
+)
 
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:
@@ -137,29 +155,21 @@ RESERVED_WORDS = set([
 
 
 class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
+    """
+    Redshift defines a TIMTESTAMPTZ column type as an alias
+    of TIMESTAMP WITH TIME ZONE.
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
 
     __visit_name__ = 'TIMESTAMPTZ'
 
     def __init__(self):
         super(TIMESTAMPTZ, self).__init__(timezone=True)
-
-
-# "Each dialect provides the full set of typenames supported by that backend with its __all__ collection
-# https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
-__all__ = (
-    'SMALLINT',
-    'INTEGER',
-    'BIGINT',
-    'DECIMAL',
-    'REAL',
-    'BOOLEAN',
-    'CHAR',
-    'DATE',
-    'TIMESTAMP',
-    'VARCHAR',
-    'DOUBLE_PRECISION',
-    'TIMESTAMPTZ'
-)
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
